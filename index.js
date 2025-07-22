@@ -2,7 +2,7 @@ require('dotenv').config({ path: './config.env' });
 const express = require('express');
 const bodyParser = require('body-parser');
 
-// Fix: dynamic import of fetch for CommonJS
+// Fix for CommonJS: dynamic import of fetch
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 
 const app = express();
@@ -12,21 +12,28 @@ const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 
 app.use(bodyParser.json());
 
-// Facebook Webhook Verification
+// ✅ Your Facebook PSID (replace with your actual PSID)
+const myPSID = '25030317586569371'; // 👈 Replace this if needed
+
+// 📌 GitHub repo to monitor
+const repoFullName = 'Arthritisboy/3Y2AAPWD';
+let lastKnownSha = null;
+
+// ✅ Facebook Webhook Verification
 app.get('/webhook', (req, res) => {
   const mode = req.query['hub.mode'];
   const token = req.query['hub.verify_token'];
   const challenge = req.query['hub.challenge'];
 
   if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-    console.log('WEBHOOK VERIFIED');
+    console.log('✅ WEBHOOK VERIFIED');
     res.status(200).send(challenge);
   } else {
     res.sendStatus(403);
   }
 });
 
-// Messenger Event Handler
+// ✅ Messenger Message Handler
 app.post('/webhook', (req, res) => {
   const body = req.body;
 
@@ -37,7 +44,7 @@ app.post('/webhook', (req, res) => {
 
       if (event.message && event.message.text) {
         console.log(`📨 Message from ${senderId}: ${event.message.text}`);
-        sendTextMessage(senderId, '✅ Bot is active!');
+        sendTextMessage(senderId, '✅ You are subscribed to GitHub commit updates!');
       }
     });
 
@@ -47,7 +54,7 @@ app.post('/webhook', (req, res) => {
   }
 });
 
-// Send message via Messenger API
+// ✅ Send a message via Messenger API
 function sendTextMessage(psid, messageText) {
   const body = {
     recipient: { id: psid },
@@ -64,5 +71,31 @@ function sendTextMessage(psid, messageText) {
     .catch(err => console.error('❌ Error sending message:', err));
 }
 
+// ✅ GitHub commit polling logic
+setInterval(() => {
+  fetch(`https://api.github.com/repos/${repoFullName}/commits`)
+    .then(res => res.json())
+    .then(commits => {
+      if (Array.isArray(commits) && commits.length > 0) {
+        const latest = commits[0];
+        const latestSha = latest.sha;
+
+        if (lastKnownSha && latestSha !== lastKnownSha) {
+          const commitMsg = latest.commit.message;
+          const url = latest.html_url;
+          const message = `🆕 New commit in ${repoFullName}:\n"${commitMsg}"\n🔗 ${url}`;
+
+          sendTextMessage(myPSID, message);
+        }
+
+        lastKnownSha = latestSha;
+      }
+    })
+    .catch(err => {
+      console.error(`❌ Failed to fetch commits from ${repoFullName}`, err);
+    });
+}, 60 * 1000); // every 60 seconds
+
+// ✅ Start server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Webhook server is running on port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Webhook server running on port ${PORT}`));
