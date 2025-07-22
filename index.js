@@ -1,7 +1,9 @@
 require('dotenv').config({ path: './config.env' });
 const express = require('express');
-const fetch = require('node-fetch'); // use native fetch in Node 18+ if preferred
 const bodyParser = require('body-parser');
+
+// Fix: dynamic import of fetch for CommonJS
+const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 
 const app = express();
 
@@ -34,6 +36,7 @@ app.post('/webhook', (req, res) => {
       const senderId = event.sender.id;
 
       if (event.message && event.message.text) {
+        console.log(`📨 Message from ${senderId}: ${event.message.text}`);
         sendTextMessage(senderId, '✅ Bot is active!');
       }
     });
@@ -57,9 +60,9 @@ function sendTextMessage(psid, messageText) {
     body: JSON.stringify(body)
   })
     .then(res => res.json())
-    .then(data => console.log('Message sent:', data))
-    .catch(err => console.error('Error sending message:', err));
+    .then(data => console.log('✅ Message sent:', data))
+    .catch(err => console.error('❌ Error sending message:', err));
 }
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Webhook server is running on port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Webhook server is running on port ${PORT}`));
