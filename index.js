@@ -12,13 +12,6 @@ const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 
 app.use(bodyParser.json());
 
-// ✅ Your Facebook PSID (replace with your actual PSID)
-const myPSID = '25030317586569371'; // 👈 Replace this if needed
-
-// 📌 GitHub repo to monitor
-const repoFullName = 'Arthritisboy/3Y2AAPWD';
-let lastKnownSha = null;
-
 // ✅ Facebook Webhook Verification
 app.get('/webhook', (req, res) => {
   const mode = req.query['hub.mode'];
@@ -33,7 +26,7 @@ app.get('/webhook', (req, res) => {
   }
 });
 
-// ✅ Messenger Message Handler
+// ✅ Messenger Message Handler (user sends message to bot)
 app.post('/webhook', (req, res) => {
   const body = req.body;
 
@@ -44,7 +37,7 @@ app.post('/webhook', (req, res) => {
 
       if (event.message && event.message.text) {
         console.log(`📨 Message from ${senderId}: ${event.message.text}`);
-        sendTextMessage(senderId, '✅ You are subscribed to GitHub commit updates!');
+        sendTextMessage(senderId, `✅ Your PSID is: ${senderId}`);
       }
     });
 
@@ -70,44 +63,6 @@ function sendTextMessage(psid, messageText) {
     .then(data => console.log('✅ Message sent:', data))
     .catch(err => console.error('❌ Error sending message:', err));
 }
-
-// ✅ GitHub commit polling logic with logging
-setInterval(() => {
-  console.log('🔄 Checking for new commits...');
-
-  fetch(`https://api.github.com/repos/${repoFullName}/commits`)
-    .then(res => res.json())
-    .then(commits => {
-      if (Array.isArray(commits) && commits.length > 0) {
-        const latest = commits[0];
-        const latestSha = latest.sha;
-
-        console.log(`🧩 Latest SHA: ${latestSha}`);
-        if (lastKnownSha) {
-          console.log(`📌 Last known SHA: ${lastKnownSha}`);
-        }
-
-        if (lastKnownSha && latestSha !== lastKnownSha) {
-          const commitMsg = latest.commit.message;
-          const url = latest.html_url;
-          const message = `🆕 New commit in ${repoFullName}:\n"${commitMsg}"\n🔗 ${url}`;
-
-          console.log('📢 New commit detected! Sending message...');
-          sendTextMessage(myPSID, message);
-        } else {
-          console.log('✅ No new commits.');
-        }
-
-        lastKnownSha = latestSha;
-      } else {
-        console.warn('⚠️ Unexpected response from GitHub API:', commits);
-      }
-    })
-    .catch(err => {
-      console.error(`❌ Failed to fetch commits from ${repoFullName}`, err);
-    });
-}, 60 * 1000); // every 60 seconds
-
 
 // ✅ Start server
 const PORT = process.env.PORT || 3000;
