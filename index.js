@@ -71,8 +71,10 @@ function sendTextMessage(psid, messageText) {
     .catch(err => console.error('❌ Error sending message:', err));
 }
 
-// ✅ GitHub commit polling logic
+// ✅ GitHub commit polling logic with logging
 setInterval(() => {
+  console.log('🔄 Checking for new commits...');
+
   fetch(`https://api.github.com/repos/${repoFullName}/commits`)
     .then(res => res.json())
     .then(commits => {
@@ -80,21 +82,32 @@ setInterval(() => {
         const latest = commits[0];
         const latestSha = latest.sha;
 
+        console.log(`🧩 Latest SHA: ${latestSha}`);
+        if (lastKnownSha) {
+          console.log(`📌 Last known SHA: ${lastKnownSha}`);
+        }
+
         if (lastKnownSha && latestSha !== lastKnownSha) {
           const commitMsg = latest.commit.message;
           const url = latest.html_url;
           const message = `🆕 New commit in ${repoFullName}:\n"${commitMsg}"\n🔗 ${url}`;
 
+          console.log('📢 New commit detected! Sending message...');
           sendTextMessage(myPSID, message);
+        } else {
+          console.log('✅ No new commits.');
         }
 
         lastKnownSha = latestSha;
+      } else {
+        console.warn('⚠️ Unexpected response from GitHub API:', commits);
       }
     })
     .catch(err => {
       console.error(`❌ Failed to fetch commits from ${repoFullName}`, err);
     });
 }, 60 * 1000); // every 60 seconds
+
 
 // ✅ Start server
 const PORT = process.env.PORT || 3000;
